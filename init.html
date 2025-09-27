@@ -1,0 +1,880 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Блоб Дизайнер</title>
+    <style>
+        body {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            background: #1a1a1a;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            overflow: hidden;
+            touch-action: none;
+        }
+
+        .container {
+            width: 100vw;
+            height: 100vh;
+            position: relative;
+            background: radial-gradient(circle at center, #2a2a2a 0%, #1a1a1a 100%);
+        }
+
+        .canvas {
+            width: 100%;
+            height: 100%;
+            cursor: crosshair;
+        }
+
+        .toolbar {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            display: flex;
+            gap: 15px;
+            z-index: 100;
+        }
+
+        .color-picker {
+            width: 50px;
+            height: 50px;
+            border: 3px solid #fff;
+            border-radius: 50%;
+            cursor: pointer;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+            transition: transform 0.2s ease;
+        }
+
+        .color-picker:hover {
+            transform: scale(1.1);
+        }
+
+        .color-picker.active {
+            transform: scale(1.2);
+            box-shadow: 0 0 20px rgba(255,255,255,0.5);
+        }
+
+        .tool-btn {
+            width: 50px;
+            height: 50px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 2px solid #fff;
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s ease;
+            backdrop-filter: blur(10px);
+        }
+
+        .tool-btn:hover {
+            background: rgba(255, 255, 255, 0.2);
+            transform: scale(1.1);
+        }
+
+        .instructions {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            color: #fff;
+            font-size: 14px;
+            opacity: 0.7;
+            max-width: 300px;
+        }
+
+        .library-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+
+        .library-content {
+            background: #2a2a2a;
+            border-radius: 20px;
+            padding: 30px;
+            max-width: 80%;
+            max-height: 80%;
+            overflow-y: auto;
+            position: relative;
+        }
+
+        .library-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            color: #fff;
+        }
+
+        .library-header h2 {
+            margin: 0;
+            font-size: 24px;
+        }
+
+        .close-btn {
+            background: none;
+            border: none;
+            color: #fff;
+            font-size: 24px;
+            cursor: pointer;
+            padding: 5px;
+        }
+
+        .library-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 20px;
+        }
+
+        .library-item {
+            background: #1a1a1a;
+            border-radius: 10px;
+            padding: 15px;
+            text-align: center;
+            position: relative;
+        }
+
+        .library-preview {
+            width: 100%;
+            height: 150px;
+            background: #333;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .library-preview svg {
+            max-width: 90%;
+            max-height: 90%;
+        }
+
+        .library-actions {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+        }
+
+        .library-actions button {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 12px;
+            transition: all 0.2s ease;
+        }
+
+        .download-btn {
+            background: #4ecdc4;
+            color: white;
+        }
+
+        .download-btn:hover {
+            background: #45b7d1;
+        }
+
+        .delete-btn {
+            background: #ff6b6b;
+            color: white;
+        }
+
+        .delete-btn:hover {
+            background: #ff5252;
+        }
+
+        .library-date {
+            color: #999;
+            font-size: 11px;
+            margin-bottom: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="toolbar">
+            <div class="color-picker active" style="background: #ff6b6b;" data-color="#ff6b6b"></div>
+            <div class="color-picker" style="background: #4ecdc4;" data-color="#4ecdc4"></div>
+            <div class="color-picker" style="background: #45b7d1;" data-color="#45b7d1"></div>
+            <div class="color-picker" style="background: #96ceb4;" data-color="#96ceb4"></div>
+            <div class="color-picker" style="background: #feca57;" data-color="#feca57"></div>
+            <div class="color-picker" style="background: #ff9ff3;" data-color="#ff9ff3"></div>
+            
+            <button class="tool-btn" id="exportBtn" title="Экспорт в SVG">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="white">
+                    <path d="M14,2H6A2,2 0 0,0 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2M18,20H6V4H13V9H18V20Z"/>
+                </svg>
+            </button>
+            
+            <button class="tool-btn" id="libraryBtn" title="Библиотека">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="white">
+                    <path d="M12,2A10,10 0 0,0 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12A10,10 0 0,0 12,2M12,4A8,8 0 0,1 20,12A8,8 0 0,1 12,20A8,8 0 0,1 4,12A8,8 0 0,1 12,4M12,6A6,6 0 0,0 6,12A6,6 0 0,0 12,18A6,6 0 0,0 18,12A6,6 0 0,0 12,6M12,8A4,4 0 0,1 16,12A4,4 0 0,1 12,16A4,4 0 0,1 8,12A4,4 0 0,1 12,8Z"/>
+                </svg>
+            </button>
+        </div>
+
+        <svg class="canvas" id="canvas">
+            <defs>
+                <filter id="glow">
+                    <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
+                    <feMerge> 
+                        <feMergeNode in="coloredBlur"/>
+                        <feMergeNode in="SourceGraphic"/>
+                    </feMerge>
+                </filter>
+            </defs>
+        </svg>
+
+        <div class="instructions">
+            Рисуйте фигуры пальцем или мышью. Перетаскивайте их друг к другу для слияния в блоб-стиле!
+        </div>
+
+        <div class="library-modal" id="libraryModal">
+            <div class="library-content">
+                <div class="library-header">
+                    <h2>Библиотека SVG</h2>
+                    <button class="close-btn" id="closeLibrary">&times;</button>
+                </div>
+                <div class="library-grid" id="libraryGrid">
+                    <!-- Элементы библиотеки будут добавлены здесь -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        class BlobDesigner {
+            constructor() {
+                this.canvas = document.getElementById('canvas');
+                this.currentColor = '#ff6b6b';
+                this.shapes = [];
+                this.isDrawing = false;
+                this.currentPath = [];
+                this.draggedShape = null;
+                this.dragOffset = { x: 0, y: 0 };
+                this.library = this.loadLibrary();
+                
+                this.init();
+            }
+
+            init() {
+                this.setupEventListeners();
+                this.animate();
+            }
+
+            setupEventListeners() {
+                // Выбор цвета
+                document.querySelectorAll('.color-picker').forEach(picker => {
+                    picker.addEventListener('click', (e) => {
+                        document.querySelector('.color-picker.active').classList.remove('active');
+                        e.target.classList.add('active');
+                        this.currentColor = e.target.dataset.color;
+                    });
+                });
+
+                // Рисование и перетаскивание
+                this.canvas.addEventListener('mousedown', this.handleStart.bind(this));
+                this.canvas.addEventListener('mousemove', this.handleMove.bind(this));
+                this.canvas.addEventListener('mouseup', this.handleEnd.bind(this));
+                
+                // Сенсорные события
+                this.canvas.addEventListener('touchstart', this.handleStart.bind(this));
+                this.canvas.addEventListener('touchmove', this.handleMove.bind(this));
+                this.canvas.addEventListener('touchend', this.handleEnd.bind(this));
+
+                // Кнопки экспорта и библиотеки
+                document.getElementById('exportBtn').addEventListener('click', this.exportSVG.bind(this));
+                document.getElementById('libraryBtn').addEventListener('click', this.openLibrary.bind(this));
+                document.getElementById('closeLibrary').addEventListener('click', this.closeLibrary.bind(this));
+            }
+
+            getEventPos(e) {
+                const rect = this.canvas.getBoundingClientRect();
+                const clientX = e.clientX || (e.touches && e.touches[0].clientX);
+                const clientY = e.clientY || (e.touches && e.touches[0].clientY);
+                return {
+                    x: clientX - rect.left,
+                    y: clientY - rect.top
+                };
+            }
+
+            handleStart(e) {
+                e.preventDefault();
+                const pos = this.getEventPos(e);
+                
+                // Проверяем, попали ли мы в существующую фигуру
+                const hitShape = this.getShapeAt(pos.x, pos.y);
+                
+                if (hitShape) {
+                    this.draggedShape = hitShape;
+                    this.dragOffset = {
+                        x: pos.x - hitShape.center.x,
+                        y: pos.y - hitShape.center.y
+                    };
+                } else {
+                    // Начинаем рисовать новую фигуру
+                    this.isDrawing = true;
+                    this.currentPath = [pos];
+                }
+            }
+
+            handleMove(e) {
+                e.preventDefault();
+                const pos = this.getEventPos(e);
+
+                if (this.draggedShape) {
+                    // Перетаскиваем фигуру
+                    const newCenter = {
+                        x: pos.x - this.dragOffset.x,
+                        y: pos.y - this.dragOffset.y
+                    };
+                    this.moveShape(this.draggedShape, newCenter);
+                } else if (this.isDrawing) {
+                    // Продолжаем рисовать
+                    this.currentPath.push(pos);
+                    this.drawCurrentPath();
+                }
+            }
+
+            handleEnd(e) {
+                e.preventDefault();
+                
+                if (this.draggedShape) {
+                    this.draggedShape = null;
+                } else if (this.isDrawing) {
+                    this.finishDrawing();
+                    this.isDrawing = false;
+                    this.currentPath = [];
+                }
+            }
+
+            drawCurrentPath() {
+                // Удаляем временный путь если есть
+                const tempPath = document.getElementById('temp-path');
+                if (tempPath) tempPath.remove();
+
+                if (this.currentPath.length < 2) return;
+
+                const pathElement = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+                pathElement.id = 'temp-path';
+                pathElement.setAttribute('d', this.pathToSVG(this.currentPath));
+                pathElement.setAttribute('fill', this.currentColor);
+                pathElement.setAttribute('opacity', '0.7');
+                this.canvas.appendChild(pathElement);
+            }
+
+            finishDrawing() {
+                if (this.currentPath.length < 3) return;
+
+                // Создаем новую фигуру
+                const shape = {
+                    id: Date.now(),
+                    originalPath: [...this.currentPath],
+                    color: this.currentColor,
+                    center: this.calculateCenter(this.currentPath),
+                    element: null
+                };
+
+                // Упрощаем и скругляем путь
+                shape.smoothPath = this.smoothPath(this.simplifyPath(this.currentPath));
+                
+                this.shapes.push(shape);
+                this.createShapeElement(shape);
+
+                // Удаляем временный путь
+                const tempPath = document.getElementById('temp-path');
+                if (tempPath) tempPath.remove();
+            }
+
+            simplifyPath(path) {
+                if (path.length <= 3) return path;
+                
+                const simplified = [path[0]];
+                const tolerance = 10;
+                
+                for (let i = 1; i < path.length - 1; i++) {
+                    const prev = simplified[simplified.length - 1];
+                    const curr = path[i];
+                    const dist = Math.sqrt((curr.x - prev.x) ** 2 + (curr.y - prev.y) ** 2);
+                    
+                    if (dist > tolerance) {
+                        simplified.push(curr);
+                    }
+                }
+                
+                simplified.push(path[path.length - 1]);
+                return simplified;
+            }
+
+            smoothPath(path) {
+                if (path.length < 3) return path;
+                
+                const smoothed = [];
+                const factor = 0.3;
+                
+                for (let i = 0; i < path.length; i++) {
+                    const prev = path[(i - 1 + path.length) % path.length];
+                    const curr = path[i];
+                    const next = path[(i + 1) % path.length];
+                    
+                    const smoothX = curr.x + factor * (prev.x + next.x - 2 * curr.x);
+                    const smoothY = curr.y + factor * (prev.y + next.y - 2 * curr.y);
+                    
+                    smoothed.push({ x: smoothX, y: smoothY });
+                }
+                
+                return smoothed;
+            }
+
+            pathToSVG(path) {
+                if (path.length < 2) return '';
+                
+                let d = `M ${path[0].x} ${path[0].y}`;
+                
+                for (let i = 1; i < path.length; i++) {
+                    const curr = path[i];
+                    const prev = path[i - 1];
+                    const next = path[(i + 1) % path.length];
+                    
+                    if (i === path.length - 1) {
+                        d += ` L ${curr.x} ${curr.y} Z`;
+                    } else {
+                        // Создаем плавные кривые
+                        const cp1x = prev.x + (curr.x - prev.x) * 0.5;
+                        const cp1y = prev.y + (curr.y - prev.y) * 0.5;
+                        d += ` Q ${cp1x} ${cp1y} ${curr.x} ${curr.y}`;
+                    }
+                }
+                
+                return d;
+            }
+
+            calculateCenter(path) {
+                let sumX = 0, sumY = 0;
+                for (const point of path) {
+                    sumX += point.x;
+                    sumY += point.y;
+                }
+                return {
+                    x: sumX / path.length,
+                    y: sumY / path.length
+                };
+            }
+
+            createShapeElement(shape) {
+                const group = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+                group.id = `shape-${shape.id}`;
+                
+                const pathElement = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+                pathElement.setAttribute('d', this.pathToSVG(shape.smoothPath));
+                pathElement.setAttribute('fill', shape.color);
+                pathElement.setAttribute('filter', 'url(#glow)');
+                pathElement.setAttribute('opacity', '0.9');
+                
+                group.appendChild(pathElement);
+                this.canvas.appendChild(group);
+                shape.element = group;
+            }
+
+            getShapeAt(x, y) {
+                for (const shape of this.shapes) {
+                    const dist = Math.sqrt((x - shape.center.x) ** 2 + (y - shape.center.y) ** 2);
+                    if (dist < 50) { // Простая проверка попадания
+                        return shape;
+                    }
+                }
+                return null;
+            }
+
+            moveShape(shape, newCenter) {
+                const dx = newCenter.x - shape.center.x;
+                const dy = newCenter.y - shape.center.y;
+                
+                // Обновляем центр
+                shape.center = newCenter;
+                
+                // Обновляем путь
+                shape.smoothPath = shape.smoothPath.map(point => ({
+                    x: point.x + dx,
+                    y: point.y + dy
+                }));
+                
+                this.updateShapeElement(shape);
+            }
+
+            updateShapeElement(shape) {
+                const pathElement = shape.element.querySelector('path');
+                pathElement.setAttribute('d', this.pathToSVG(shape.smoothPath));
+            }
+
+            calculateDistance(shape1, shape2) {
+                return Math.sqrt(
+                    (shape1.center.x - shape2.center.x) ** 2 + 
+                    (shape1.center.y - shape2.center.y) ** 2
+                );
+            }
+
+            findShapeBoundaryIntersection(shape, fromCenter, direction) {
+                // Находим пересечение луча из центра с границей фигуры
+                const path = shape.smoothPath;
+                let maxDistance = 0;
+                let intersectionPoint = null;
+                
+                // Проверяем пересечения с каждым сегментом фигуры
+                for (let i = 0; i < path.length; i++) {
+                    const p1 = path[i];
+                    const p2 = path[(i + 1) % path.length];
+                    
+                    const intersection = this.lineIntersection(
+                        fromCenter.x, fromCenter.y,
+                        fromCenter.x + direction.x * 1000, fromCenter.y + direction.y * 1000,
+                        p1.x, p1.y, p2.x, p2.y
+                    );
+                    
+                    if (intersection) {
+                        const distance = Math.sqrt(
+                            (intersection.x - fromCenter.x) ** 2 + 
+                            (intersection.y - fromCenter.y) ** 2
+                        );
+                        
+                        if (distance > maxDistance) {
+                            maxDistance = distance;
+                            intersectionPoint = intersection;
+                        }
+                    }
+                }
+                
+                return intersectionPoint || { x: fromCenter.x + direction.x * 30, y: fromCenter.y + direction.y * 30 };
+            }
+
+            lineIntersection(x1, y1, x2, y2, x3, y3, x4, y4) {
+                const denom = (x1 - x2) * (y3 - y4) - (y1 - y2) * (x3 - x4);
+                if (Math.abs(denom) < 0.0001) return null;
+                
+                const t = ((x1 - x3) * (y3 - y4) - (y1 - y3) * (x3 - x4)) / denom;
+                const u = -((x1 - x2) * (y1 - y3) - (y1 - y2) * (x1 - x3)) / denom;
+                
+                if (t >= 0 && t <= 1 && u >= 0 && u <= 1) {
+                    return {
+                        x: x1 + t * (x2 - x1),
+                        y: y1 + t * (y2 - y1)
+                    };
+                }
+                
+                return null;
+            }
+
+            findWidestPerpendicularInShape(shape, connectionLine) {
+                // Находим самый широкий перпендикуляр внутри фигуры
+                const { start, end } = connectionLine;
+                const lineLength = Math.sqrt((end.x - start.x) ** 2 + (end.y - start.y) ** 2);
+                const lineDir = { x: (end.x - start.x) / lineLength, y: (end.y - start.y) / lineLength };
+                const perpDir = { x: -lineDir.y, y: lineDir.x };
+                
+                let maxWidth = 0;
+                let bestPoint = null;
+                let bestPerp = null;
+                
+                // Проверяем точки вдоль линии соединения внутри фигуры
+                const steps = 20;
+                for (let i = 0; i <= steps; i++) {
+                    const t = i / steps;
+                    const testPoint = {
+                        x: start.x + t * (end.x - start.x),
+                        y: start.y + t * (end.y - start.y)
+                    };
+                    
+                    if (this.isPointInShape(testPoint, shape)) {
+                        // Находим ширину перпендикуляра в этой точке
+                        const perp1 = this.findShapeBoundaryIntersection(shape, testPoint, perpDir);
+                        const perp2 = this.findShapeBoundaryIntersection(shape, testPoint, { x: -perpDir.x, y: -perpDir.y });
+                        
+                        const width = Math.sqrt((perp1.x - perp2.x) ** 2 + (perp1.y - perp2.y) ** 2);
+                        
+                        if (width > maxWidth) {
+                            maxWidth = width;
+                            bestPoint = testPoint;
+                            bestPerp = { p1: perp1, p2: perp2, width: width };
+                        }
+                    }
+                }
+                
+                return bestPerp;
+            }
+
+            isPointInShape(point, shape) {
+                // Простая проверка - точка внутри фигуры если она близко к центру
+                const distToCenter = Math.sqrt(
+                    (point.x - shape.center.x) ** 2 + 
+                    (point.y - shape.center.y) ** 2
+                );
+                return distToCenter < 40; // Упрощенная проверка
+            }
+
+            createBlobConnection(shape1, shape2, distance) {
+                const maxDistance = 450;
+                if (distance > maxDistance) return null;
+                
+                // Линия соединения между центрами
+                const connectionLine = {
+                    start: shape1.center,
+                    end: shape2.center
+                };
+                
+                // Находим самые широкие перпендикуляры в каждой фигуре
+                const perp1 = this.findWidestPerpendicularInShape(shape1, connectionLine);
+                const perp2 = this.findWidestPerpendicularInShape(shape2, connectionLine);
+                
+                if (!perp1 || !perp2) return null;
+                
+                // Находим центральную точку между перпендикулярами
+                const midX = (shape1.center.x + shape2.center.x) / 2;
+                const midY = (shape1.center.y + shape2.center.y) / 2;
+                
+                // Ширина в центре - используем полную ширину перпендикуляров
+                const centerWidth = Math.min(perp1.width, perp2.width) * 0.8;
+                
+                // Направление перпендикуляра
+                const lineLength = Math.sqrt((shape2.center.x - shape1.center.x) ** 2 + (shape2.center.y - shape1.center.y) ** 2);
+                const lineDir = { 
+                    x: (shape2.center.x - shape1.center.x) / lineLength, 
+                    y: (shape2.center.y - shape1.center.y) / lineLength 
+                };
+                const perpDir = { x: -lineDir.y, y: lineDir.x };
+                
+                // Точки центрального перпендикуляра
+                const centerP1 = {
+                    x: midX + perpDir.x * centerWidth / 2,
+                    y: midY + perpDir.y * centerWidth / 2
+                };
+                const centerP2 = {
+                    x: midX - perpDir.x * centerWidth / 2,
+                    y: midY - perpDir.y * centerWidth / 2
+                };
+                
+                // Создаем плавный коннектор
+                const connection = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+                
+                const d = `M ${perp1.p1.x} ${perp1.p1.y} 
+                          Q ${centerP1.x} ${centerP1.y} ${perp2.p1.x} ${perp2.p1.y} 
+                          L ${perp2.p2.x} ${perp2.p2.y} 
+                          Q ${centerP2.x} ${centerP2.y} ${perp1.p2.x} ${perp1.p2.y} Z`;
+                
+                connection.setAttribute('d', d);
+                
+                // Создаем градиент для перехода цветов
+                const gradientId = `gradient-${shape1.id}-${shape2.id}`;
+                let gradient = document.getElementById(gradientId);
+                
+                if (!gradient) {
+                    gradient = document.createElementNS('http://www.w3.org/2000/svg', 'linearGradient');
+                    gradient.id = gradientId;
+                    gradient.setAttribute('x1', '0%');
+                    gradient.setAttribute('y1', '0%');
+                    gradient.setAttribute('x2', '100%');
+                    gradient.setAttribute('y2', '0%');
+                    
+                    const stop1 = document.createElementNS('http://www.w3.org/2000/svg', 'stop');
+                    stop1.setAttribute('offset', '0%');
+                    stop1.setAttribute('stop-color', shape1.color);
+                    
+                    const stop2 = document.createElementNS('http://www.w3.org/2000/svg', 'stop');
+                    stop2.setAttribute('offset', '100%');
+                    stop2.setAttribute('stop-color', shape2.color);
+                    
+                    gradient.appendChild(stop1);
+                    gradient.appendChild(stop2);
+                    
+                    const defs = this.canvas.querySelector('defs');
+                    defs.appendChild(gradient);
+                }
+                
+                connection.setAttribute('fill', `url(#${gradientId})`);
+                connection.setAttribute('opacity', '0.8');
+                connection.setAttribute('filter', 'url(#glow)');
+                
+                return connection;
+            }
+
+            updateConnections() {
+                // Удаляем старые соединения
+                this.canvas.querySelectorAll('.blob-connection').forEach(conn => conn.remove());
+                
+                // Создаем новые соединения
+                for (let i = 0; i < this.shapes.length; i++) {
+                    for (let j = i + 1; j < this.shapes.length; j++) {
+                        const shape1 = this.shapes[i];
+                        const shape2 = this.shapes[j];
+                        const distance = this.calculateDistance(shape1, shape2);
+                        
+                        const connection = this.createBlobConnection(shape1, shape2, distance);
+                        if (connection) {
+                            connection.classList.add('blob-connection');
+                            this.canvas.insertBefore(connection, this.shapes[0].element);
+                        }
+                    }
+                }
+            }
+
+            animate() {
+                this.updateConnections();
+                requestAnimationFrame(() => this.animate());
+            }
+
+            loadLibrary() {
+                const saved = localStorage.getItem('blobLibrary');
+                return saved ? JSON.parse(saved) : [];
+            }
+
+            saveLibrary() {
+                localStorage.setItem('blobLibrary', JSON.stringify(this.library));
+            }
+
+            exportSVG() {
+                if (this.shapes.length === 0) {
+                    alert('Нет фигур для экспорта!');
+                    return;
+                }
+
+                // Создаем копию SVG для экспорта
+                const svgClone = this.canvas.cloneNode(true);
+                
+                // Находим границы всех элементов
+                const bbox = this.calculateBoundingBox();
+                const padding = 20;
+                
+                // Устанавливаем viewBox
+                svgClone.setAttribute('viewBox', 
+                    `${bbox.minX - padding} ${bbox.minY - padding} ${bbox.width + padding * 2} ${bbox.height + padding * 2}`);
+                svgClone.setAttribute('width', bbox.width + padding * 2);
+                svgClone.setAttribute('height', bbox.height + padding * 2);
+
+                // Создаем SVG строку
+                const svgString = new XMLSerializer().serializeToString(svgClone);
+                
+                // Сохраняем в библиотеку
+                const libraryItem = {
+                    id: Date.now(),
+                    name: `Блоб ${new Date().toLocaleString()}`,
+                    svg: svgString,
+                    preview: svgString,
+                    date: new Date().toISOString()
+                };
+                
+                this.library.push(libraryItem);
+                this.saveLibrary();
+                
+                // Скачиваем файл
+                this.downloadSVG(svgString, `blob-${libraryItem.id}.svg`);
+                
+                alert('SVG экспортирован и сохранен в библиотеку!');
+            }
+
+            calculateBoundingBox() {
+                let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+                
+                this.shapes.forEach(shape => {
+                    shape.smoothPath.forEach(point => {
+                        minX = Math.min(minX, point.x);
+                        minY = Math.min(minY, point.y);
+                        maxX = Math.max(maxX, point.x);
+                        maxY = Math.max(maxY, point.y);
+                    });
+                });
+                
+                return {
+                    minX,
+                    minY,
+                    maxX,
+                    maxY,
+                    width: maxX - minX,
+                    height: maxY - minY
+                };
+            }
+
+            downloadSVG(svgString, filename) {
+                const blob = new Blob([svgString], { type: 'image/svg+xml' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = filename;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+            }
+
+            openLibrary() {
+                this.renderLibrary();
+                document.getElementById('libraryModal').style.display = 'flex';
+            }
+
+            closeLibrary() {
+                document.getElementById('libraryModal').style.display = 'none';
+            }
+
+            renderLibrary() {
+                const grid = document.getElementById('libraryGrid');
+                grid.innerHTML = '';
+                
+                if (this.library.length === 0) {
+                    grid.innerHTML = '<p style="color: #999; text-align: center; grid-column: 1/-1;">Библиотека пуста. Создайте и экспортируйте свой первый блоб!</p>';
+                    return;
+                }
+                
+                this.library.forEach(item => {
+                    const itemElement = document.createElement('div');
+                    itemElement.className = 'library-item';
+                    
+                    const date = new Date(item.date).toLocaleString();
+                    
+                    itemElement.innerHTML = `
+                        <div class="library-preview">
+                            ${item.preview}
+                        </div>
+                        <div class="library-date">${date}</div>
+                        <div class="library-actions">
+                            <button class="download-btn" onclick="blobDesigner.downloadLibraryItem(${item.id})">
+                                Скачать
+                            </button>
+                            <button class="delete-btn" onclick="blobDesigner.deleteLibraryItem(${item.id})">
+                                Удалить
+                            </button>
+                        </div>
+                    `;
+                    
+                    grid.appendChild(itemElement);
+                });
+            }
+
+            downloadLibraryItem(id) {
+                const item = this.library.find(item => item.id === id);
+                if (item) {
+                    this.downloadSVG(item.svg, `blob-${item.id}.svg`);
+                }
+            }
+
+            deleteLibraryItem(id) {
+                if (confirm('Удалить этот элемент из библиотеки?')) {
+                    this.library = this.library.filter(item => item.id !== id);
+                    this.saveLibrary();
+                    this.renderLibrary();
+                }
+            }
+        }
+
+        // Запускаем приложение
+        const blobDesigner = new BlobDesigner();
+    </script>
+<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'985bacd1e6ce0073',t:'MTc1ODk4MzE3Ni4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+</html>
